@@ -91,7 +91,10 @@ namespace SmartCraftStorage.Stations
 
                     int remaining = totalHoney;
                     string itemName = __instance.m_honeyItem.m_itemData.m_shared.m_name;
-                    var stored = new List<(Container container, int amount)>();
+                    // On a partial automatic collection, undo only the exact stacks
+                    // changed by AddItem. Removing by item name can instead remove
+                    // honey that was already in a nearly-full chest.
+                    var stored = new List<(Inventory inventory, ItemDrop.ItemData item, int amount)>();
 
                     // TEMPORARY diagnostic for the "honey dropped instead of stored"
                     // report. Remove once the cause is confirmed.
@@ -122,13 +125,46 @@ namespace SmartCraftStorage.Stations
                             continue;
                         }
 
+                        var stackSizesBefore = new Dictionary<ItemDrop.ItemData, int>();
+                        foreach (var item in chestInventory.GetAllItems())
+                        {
+                            if (item.m_shared.m_name == itemName)
+                            {
+                                stackSizesBefore[item] = item.m_stack;
+                            }
+                        }
+
                         int before = chestInventory.CountItems(itemName);
                         chestInventory.AddItem(__instance.m_honeyItem.gameObject, remaining);
                         int added = chestInventory.CountItems(itemName) - before;
                         if (added > 0)
                         {
                             remaining -= added;
-                            stored.Add((container, added));
+
+                            int tracked = 0;
+                            foreach (var item in chestInventory.GetAllItems())
+                            {
+                                if (item.m_shared.m_name != itemName)
+                                {
+                                    continue;
+                                }
+
+                                int stackSizeBefore;
+                                stackSizesBefore.TryGetValue(item, out stackSizeBefore);
+                                int addedToStack = item.m_stack - stackSizeBefore;
+                                if (addedToStack <= 0)
+                                {
+                                    continue;
+                                }
+
+                                int amountToUndo = Mathf.Min(addedToStack, added - tracked);
+                                stored.Add((chestInventory, item, amountToUndo));
+                                tracked += amountToUndo;
+                                if (tracked >= added)
+                                {
+                                    break;
+                                }
+                            }
                         }
                     }
 
@@ -151,9 +187,9 @@ namespace SmartCraftStorage.Stations
                         // just happened and leave the hive's honey queued as-is instead
                         // of ever dropping any of it on the ground, where nobody may be
                         // around to notice it despawn.
-                        foreach (var (container, amount) in stored)
+                        foreach (var (inventory, item, amount) in stored)
                         {
-                            container.GetInventory().RemoveItem(itemName, amount);
+                            inventory.RemoveItem(item, amount);
                         }
 
                         Debug.Log("[SmartCraftStorage] Beehive: auto-triggered, couldn't fit everything, "
