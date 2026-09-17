@@ -17,6 +17,7 @@ namespace SmartCraftStorage.Stations
         public static ConfigEntry<float> FermenterRadius;
 
         public static ConfigEntry<bool> FireplaceAutoRefuel;
+        public static ConfigEntry<bool> FireplaceRegularWoodOnly;
         public static ConfigEntry<bool> SmelterAutoRefuel;
         public static ConfigEntry<bool> SmelterAutoCollect;
         public static ConfigEntry<bool> KilnAutoRefuel;
@@ -82,6 +83,9 @@ namespace SmartCraftStorage.Stations
 
             FireplaceAutoRefuel = config.Bind("Stations", "FireplaceAutoRefuel", true,
                 new ConfigDescription("Fireplaces/torches automatically pull fuel from nearby chests.",
+                    null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
+            FireplaceRegularWoodOnly = config.Bind("Fireplace", "FireplaceRegularWoodOnly", true,
+                new ConfigDescription("Wood-fired fireplaces/hearths only pull regular Wood from nearby chests, skipping Fine Wood and Core Wood. Disable to let them use those wood types too. Other fuels, such as Resin, are unaffected.",
                     null, new ConfigurationManagerAttributes { IsAdminOnly = true }));
             SmelterAutoRefuel = config.Bind("Stations", "SmelterAutoRefuel", true,
                 new ConfigDescription("Smelters automatically pull ore/fuel from nearby chests.",
